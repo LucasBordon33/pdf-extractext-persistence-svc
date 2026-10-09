@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pdf-extractext-persistence-svc"
+version = "0.1.0"
+description = "Microservicio de persistencia y consulta de datos de PDFs previamente extraídos, con MongoDB como fuente de verdad y Redis como caché e idempotencia de escrituras."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Matias Bordones", email = "matiasbordonesc7@gmail.com" },
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "pydantic-settings",
+    "motor",
+    "redis>=5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "ruff",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -1,0 +1,40 @@
+services:
+  persistence-service:
+    build:
+      context: .
+    image: pdf-persistence:0.1.0
+    env_file:
+      - .env
+    expose:
+      - "8003"
+    read_only: true
+    tmpfs:
+      - /tmp:size=10m
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/api/v1/health')"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - pdf-extractext-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.persistence.rule=Host(`persistence.localhost`)"
+      - "traefik.http.routers.persistence.entrypoints=websecure"
+      - "traefik.http.routers.persistence.tls=true"
+      - "traefik.http.services.persistence.loadbalancer.server.port=8003"
+
+networks:
+  traefik-net:
+    external: true
+  pdf-extractext-network:
+    external: true

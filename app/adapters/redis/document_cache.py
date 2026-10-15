@@ -21,6 +21,9 @@ class RedisDocumentCache(DocumentCache):
     async def release_lock(self, checksum: str) -> None:
         await self._client.delete(self._lock_key(checksum))
 
+    async def close(self) -> None:
+        await self._client.aclose()
+
     def _document_key(self, checksum: str) -> str:
         return f"doc:{checksum}"
 

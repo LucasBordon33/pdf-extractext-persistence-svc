@@ -57,8 +57,10 @@ def test_documents_router_declares_exactly_the_requested_routes() -> None:
 
     assert declared == {
         ("/store", frozenset({"POST"})),
-        ("/documents/{checksum}", frozenset({"GET"})),
-        ("/documents/{checksum}", frozenset({"DELETE"})),
+        ("/documents", frozenset({"GET"})),
+        ("/documents/checksum/{checksum}", frozenset({"GET"})),
+        ("/documents/{doc_id}", frozenset({"GET"})),
+        ("/documents/{doc_id}", frozenset({"DELETE"})),
     }
 
 
@@ -132,33 +134,54 @@ def test_store_rejects_invalid_payloads_with_422(
     persistence_service.store.assert_not_awaited()
 
 
-def test_get_document_returns_200_with_document_response_contract(
+def test_list_documents_returns_200_with_all_documents(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.list_all.return_value = [FETCHED_DOCUMENT]
+
+    response = client.get("/documents")
+
+    assert response.status_code == 200
+    assert response.json() == [FETCHED_DOCUMENT]
+
+
+def test_list_documents_delegates_to_persistence_service(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.list_all.return_value = []
+
+    client.get("/documents")
+
+    persistence_service.list_all.assert_awaited_once()
+
+
+def test_get_document_by_checksum_returns_200_with_document_response_contract(
     client: TestClient, persistence_service: AsyncMock
 ) -> None:
     persistence_service.fetch.return_value = FETCHED_DOCUMENT
 
-    response = client.get(f"/documents/{CHECKSUM}")
+    response = client.get(f"/documents/checksum/{CHECKSUM}")
 
     assert response.status_code == 200
     assert response.json() == FETCHED_DOCUMENT
 
 
-def test_get_document_delegates_to_persistence_service(
+def test_get_document_by_checksum_delegates_to_persistence_service(
     client: TestClient, persistence_service: AsyncMock
 ) -> None:
     persistence_service.fetch.return_value = FETCHED_DOCUMENT
 
-    client.get(f"/documents/{CHECKSUM}")
+    client.get(f"/documents/checksum/{CHECKSUM}")
 
     persistence_service.fetch.assert_awaited_once_with(CHECKSUM)
 
 
-def test_get_document_returns_404_with_document_not_found_error(
+def test_get_document_by_checksum_returns_404_with_document_not_found_error(
     client: TestClient, persistence_service: AsyncMock
 ) -> None:
     persistence_service.fetch.return_value = None
 
-    response = client.get(f"/documents/{CHECKSUM}")
+    response = client.get(f"/documents/checksum/{CHECKSUM}")
 
     assert response.status_code == 404
     assert response.json() == {
@@ -167,12 +190,47 @@ def test_get_document_returns_404_with_document_not_found_error(
     }
 
 
+def test_get_document_returns_200_with_document_response_contract(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.fetch_by_id.return_value = FETCHED_DOCUMENT
+
+    response = client.get(f"/documents/{DOC_ID}")
+
+    assert response.status_code == 200
+    assert response.json() == FETCHED_DOCUMENT
+
+
+def test_get_document_delegates_to_persistence_service(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.fetch_by_id.return_value = FETCHED_DOCUMENT
+
+    client.get(f"/documents/{DOC_ID}")
+
+    persistence_service.fetch_by_id.assert_awaited_once_with(DOC_ID)
+
+
+def test_get_document_returns_404_with_document_not_found_error(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.fetch_by_id.return_value = None
+
+    response = client.get(f"/documents/{DOC_ID}")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error_code": "DOCUMENT_NOT_FOUND",
+        "message": "No document found for the given id",
+    }
+
+
 def test_delete_document_returns_204_without_body(
     client: TestClient, persistence_service: AsyncMock
 ) -> None:
-    persistence_service.delete.return_value = True
+    persistence_service.delete_by_id.return_value = True
 
-    response = client.delete(f"/documents/{CHECKSUM}")
+    response = client.delete(f"/documents/{DOC_ID}")
 
     assert response.status_code == 204
     assert response.content == b""
@@ -181,22 +239,22 @@ def test_delete_document_returns_204_without_body(
 def test_delete_document_delegates_to_persistence_service(
     client: TestClient, persistence_service: AsyncMock
 ) -> None:
-    persistence_service.delete.return_value = True
+    persistence_service.delete_by_id.return_value = True
 
-    client.delete(f"/documents/{CHECKSUM}")
+    client.delete(f"/documents/{DOC_ID}")
 
-    persistence_service.delete.assert_awaited_once_with(CHECKSUM)
+    persistence_service.delete_by_id.assert_awaited_once_with(DOC_ID)
 
 
 def test_delete_document_returns_404_when_document_not_found(
     client: TestClient, persistence_service: AsyncMock
 ) -> None:
-    persistence_service.delete.return_value = False
+    persistence_service.delete_by_id.return_value = False
 
-    response = client.delete(f"/documents/{CHECKSUM}")
+    response = client.delete(f"/documents/{DOC_ID}")
 
     assert response.status_code == 404
     assert response.json() == {
         "error_code": "DOCUMENT_NOT_FOUND",
-        "message": "No document found for the given checksum",
+        "message": "No document found for the given id",
     }

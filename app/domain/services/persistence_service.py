@@ -56,6 +56,13 @@ class PersistenceService:
 
         return await self._repository.delete(document.id)
 
+    async def delete_by_id(self, doc_id: str) -> bool:
+        document = await self._repository.find_by_id(doc_id)
+        if document is None:
+            return False
+
+        return await self._repository.delete(doc_id)
+
     async def list_all(self) -> list[dict[str, Any]]:
         documents = await self._repository.find_all()
         return [json.loads(document.to_json()) for document in documents]

@@ -7,7 +7,8 @@ from app.api.deps import get_persistence_service
 from app.api.v1.schemas import DocumentResponse, ErrorResponse, StoreRequest, StoreResponse
 from app.domain.services.persistence_service import PersistenceService
 
-NOT_FOUND_MESSAGE = "No document found for the given checksum"
+NOT_FOUND_BY_ID_MESSAGE = "No document found for the given id"
+NOT_FOUND_BY_CHECKSUM_MESSAGE = "No document found for the given checksum"
 
 router = APIRouter()
 
@@ -24,19 +25,35 @@ async def store_document(payload: StoreRequest, service: PersistenceServiceDep) 
     return StoreResponse(id=result["id"], checksum=result["checksum"])
 
 
-@router.get("/documents/{checksum}", response_model=DocumentResponse)
-async def get_document(checksum: str, service: PersistenceServiceDep) -> DocumentResponse:
+@router.get("/documents", response_model=list[DocumentResponse])
+async def list_documents(service: PersistenceServiceDep) -> list[DocumentResponse]:
+    documents = await service.list_all()
+    return [DocumentResponse(**document) for document in documents]
+
+
+@router.get("/documents/checksum/{checksum}", response_model=DocumentResponse)
+async def get_document_by_checksum(
+    checksum: str, service: PersistenceServiceDep
+) -> DocumentResponse:
     document = await service.fetch(checksum)
     if document is None:
-        return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_MESSAGE)
+        return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_CHECKSUM_MESSAGE)
     return DocumentResponse(**document)
 
 
-@router.delete("/documents/{checksum}", status_code=204)
-async def delete_document(checksum: str, service: PersistenceServiceDep) -> Response:
-    deleted = await service.delete(checksum)
+@router.get("/documents/{doc_id}", response_model=DocumentResponse)
+async def get_document(doc_id: str, service: PersistenceServiceDep) -> DocumentResponse:
+    document = await service.fetch_by_id(doc_id)
+    if document is None:
+        return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_ID_MESSAGE)
+    return DocumentResponse(**document)
+
+
+@router.delete("/documents/{doc_id}", status_code=204)
+async def delete_document(doc_id: str, service: PersistenceServiceDep) -> Response:
+    deleted = await service.delete_by_id(doc_id)
     if not deleted:
-        return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_MESSAGE)
+        return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_ID_MESSAGE)
     return Response(status_code=204)
 
 

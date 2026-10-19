@@ -254,6 +254,31 @@ async def test_delete_returns_false_when_repository_reports_failure() -> None:
     assert result is False
 
 
+async def test_delete_by_id_delegates_to_repository_and_returns_result() -> None:
+    repository, cache = make_ports()
+    repository.delete.return_value = True
+    service = make_service(repository, cache)
+
+    result = await service.delete_by_id(DOC_ID)
+
+    assert result is True
+    repository.find_by_id.assert_awaited_once_with(DOC_ID)
+    repository.delete.assert_awaited_once_with(DOC_ID)
+    cache.acquire_lock.assert_not_awaited()
+    cache.release_lock.assert_not_awaited()
+
+
+async def test_delete_by_id_returns_false_when_document_not_found() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = None
+    service = make_service(repository, cache)
+
+    result = await service.delete_by_id(DOC_ID)
+
+    assert result is False
+    repository.delete.assert_not_awaited()
+
+
 async def test_list_all_serializes_every_document_returned_by_repository() -> None:
     repository, cache = make_ports()
     second_document = PDFDocument(

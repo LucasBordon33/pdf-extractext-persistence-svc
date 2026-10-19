@@ -19,3 +19,7 @@ class DocumentRepository(ABC):
     @abstractmethod
     async def delete(self, doc_id: str) -> bool:
         ...
+
+    @abstractmethod
+    async def find_all(self) -> list[PDFDocument]:
+        ...

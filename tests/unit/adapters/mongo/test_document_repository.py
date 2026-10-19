@@ -192,6 +192,40 @@ async def test_delete_returns_false_when_no_document_was_deleted(
     assert result is False
 
 
+async def test_find_all_rebuilds_every_document_from_the_cursor(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    collection.find = MagicMock(return_value=_async_iterable([make_stored_document()]))
+
+    result = await repository.find_all()
+
+    assert result == [make_expected_document()]
+    collection.find.assert_called_once_with()
+
+
+async def test_find_all_returns_empty_list_when_there_are_no_documents(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    collection.find = MagicMock(return_value=_async_iterable([]))
+
+    result = await repository.find_all()
+
+    assert result == []
+
+
+def _async_iterable(items: list[dict[str, Any]]) -> Any:
+    class _Cursor:
+        def __aiter__(self) -> Any:
+            return self
+
+        async def __anext__(self) -> dict[str, Any]:
+            if not items:
+                raise StopAsyncIteration
+            return items.pop(0)
+
+    return _Cursor()
+
+
 def test_repository_module_contains_only_translation_dependencies() -> None:
     module = inspect.getmodule(MongoDocumentRepository)
     assert module is not None

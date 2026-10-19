@@ -33,6 +33,13 @@ class MongoDocumentRepository(DocumentRepository):
         result = await self._collection.delete_one({"_id": ObjectId(doc_id)})
         return result.deleted_count > 0
 
+    async def find_all(self) -> list[PDFDocument]:
+        return [
+            document
+            async for raw in self._collection.find()
+            if (document := self._to_document(raw)) is not None
+        ]
+
     def _to_document(self, raw: dict[str, Any] | None) -> PDFDocument | None:
         if raw is None:
             return None

@@ -254,6 +254,69 @@ async def test_delete_returns_false_when_repository_reports_failure() -> None:
     assert result is False
 
 
+async def test_list_all_serializes_every_document_returned_by_repository() -> None:
+    repository, cache = make_ports()
+    second_document = PDFDocument(
+        id="68ff3f8a1b2c3d4e5f6a7b8d",
+        name="otro.pdf",
+        checksum="otro-checksum",
+        content="Segundo documento.",
+        size=100,
+    )
+    repository.find_all.return_value = [make_existing_document(), second_document]
+    service = make_service(repository, cache)
+
+    result = await service.list_all()
+
+    assert result == [
+        EXPECTED_DOCUMENT,
+        {
+            "id": "68ff3f8a1b2c3d4e5f6a7b8d",
+            "name": "otro.pdf",
+            "checksum": "otro-checksum",
+            "content": "Segundo documento.",
+            "size": 100,
+            "created_at": None,
+        },
+    ]
+    repository.find_all.assert_awaited_once()
+    cache.get.assert_not_awaited()
+    cache.set.assert_not_awaited()
+
+
+async def test_list_all_returns_empty_list_when_repository_is_empty() -> None:
+    repository, cache = make_ports()
+    repository.find_all.return_value = []
+    service = make_service(repository, cache)
+
+    result = await service.list_all()
+
+    assert result == []
+
+
+async def test_fetch_by_id_returns_serialized_document_without_using_cache() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = make_existing_document()
+    service = make_service(repository, cache)
+
+    result = await service.fetch_by_id(DOC_ID)
+
+    assert result == EXPECTED_DOCUMENT
+    repository.find_by_id.assert_awaited_once_with(DOC_ID)
+    cache.get.assert_not_awaited()
+    cache.set.assert_not_awaited()
+
+
+async def test_fetch_by_id_returns_none_when_document_not_found() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = None
+    service = make_service(repository, cache)
+
+    result = await service.fetch_by_id(DOC_ID)
+
+    assert result is None
+
+
 def test_document_cache_contract_has_no_invalidation_operation() -> None:
     public_methods = {
         method_name

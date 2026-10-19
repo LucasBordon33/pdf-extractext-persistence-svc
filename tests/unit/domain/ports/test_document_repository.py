@@ -9,7 +9,7 @@ import pytest
 from app.domain.models import PDFDocument
 from app.domain.ports.repository import DocumentRepository
 
-CONTRACT_METHODS = ("save", "find_by_checksum", "find_by_id", "delete")
+CONTRACT_METHODS = ("save", "find_by_checksum", "find_by_id", "delete", "find_all")
 ALLOWED_STDLIB_IMPORTS = {"abc", "typing"}
 ALLOWED_DOMAIN_IMPORTS = {"app.domain.models"}
 
@@ -61,19 +61,21 @@ def test_contract_exposes_exactly_the_requested_operations() -> None:
         ("find_by_checksum", "checksum", str, PDFDocument | None),
         ("find_by_id", "doc_id", str, PDFDocument | None),
         ("delete", "doc_id", str, bool),
+        ("find_all", None, None, list[PDFDocument]),
     ],
 )
 def test_contract_signatures_match_specification(
-    method_name: str, parameter_name: str, parameter_type: Any, return_type: Any
+    method_name: str, parameter_name: str | None, parameter_type: Any, return_type: Any
 ) -> None:
     signature = inspect.signature(_contract_method(method_name))
     parameters = list(signature.parameters.values())
 
-    assert len(parameters) == 2
+    assert len(parameters) == (1 if parameter_name is None else 2)
     assert parameters[0].name == "self"
-    assert parameters[1].name == parameter_name
-    assert parameters[1].annotation == parameter_type
-    assert parameters[1].default is inspect.Parameter.empty
+    if parameter_name is not None:
+        assert parameters[1].name == parameter_name
+        assert parameters[1].annotation == parameter_type
+        assert parameters[1].default is inspect.Parameter.empty
     assert signature.return_annotation == return_type
 
 

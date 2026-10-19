@@ -56,5 +56,15 @@ class PersistenceService:
 
         return await self._repository.delete(document.id)
 
+    async def list_all(self) -> list[dict[str, Any]]:
+        documents = await self._repository.find_all()
+        return [json.loads(document.to_json()) for document in documents]
+
+    async def fetch_by_id(self, doc_id: str) -> dict[str, Any] | None:
+        document = await self._repository.find_by_id(doc_id)
+        if document is None:
+            return None
+        return json.loads(document.to_json())
+
     def _duplicate_response(self) -> dict[str, Any]:
         return {"status": 409, "detail": "Document with this checksum already exists"}

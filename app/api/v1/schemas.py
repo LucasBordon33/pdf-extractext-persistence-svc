@@ -21,7 +21,7 @@ class DocumentResponse(BaseModel):
     checksum: str
     content: str
     size: int
-    created_at: datetime
+    created_at: datetime | None
 
 
 class ErrorResponse(BaseModel):

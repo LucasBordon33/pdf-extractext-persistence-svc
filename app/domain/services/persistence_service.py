@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 from app.domain.models import PDFDocument
@@ -28,7 +29,9 @@ class PersistenceService:
             if await self._repository.find_by_checksum(checksum) is not None:
                 return self._duplicate_response()
 
-            document = PDFDocument(name=name, content=text, checksum=checksum, size=size)
+            document = PDFDocument(
+                name=name, content=text, checksum=checksum, size=size, created_at=datetime.now(UTC)
+            )
             generated_id = await self._repository.save(document)
             stored_document = document.model_copy(update={"id": generated_id})
             await self._cache.set(checksum, stored_document.to_json(), self._cache_ttl_seconds)

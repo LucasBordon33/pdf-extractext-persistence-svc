@@ -24,8 +24,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    depends_on:
+      - redis
     networks:
-      - pdf-extractext-network
+      pdf-extractext-network:
+        aliases:
+          - store
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.persistence.rule=Host(`persistence.localhost`)"
@@ -33,8 +37,15 @@ services:
       - "traefik.http.routers.persistence.tls=true"
       - "traefik.http.services.persistence.loadbalancer.server.port=8003"
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - pdf-extractext-network
+
 networks:
-  traefik-net:
-    external: true
   pdf-extractext-network:
     external: true
+    name: pdf-extractext_pdf-extractext-network

@@ -1,0 +1,6 @@
+{
+  "method": "POST",
+  "url": "__BASE_URL__/api/v1/store",
+  "body": "{\"name\": \"vegeta-conflict.pdf\", \"text\": \"vegeta conflict seed\", \"checksum\": \"vegeta-conflict-fixed-checksum\", \"size\": 21}",
+  "headers": { "Content-Type": ["application/json"] }
+}

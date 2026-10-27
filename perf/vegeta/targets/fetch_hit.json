@@ -1,0 +1,1 @@
+{"method": "GET", "url": "__BASE_URL__/api/v1/documents/checksum/__SEED_CHECKSUM__"}

@@ -8,12 +8,12 @@ on:
 jobs:
   semgrep:
     name: Semgrep security gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
       - name: Install pinned Semgrep
@@ -29,9 +29,16 @@ jobs:
 
   hadolint:
     name: Hadolint Dockerfile gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install pinned Hadolint
+        run: |
+          curl --fail --silent --location --output hadolint \
+            "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64"
+          echo "c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507  hadolint" \
+            | sha256sum --check
+          chmod +x hadolint
       - name: Lint Dockerfile
-        run: docker run --rm -i hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d --failure-threshold warning - < Dockerfile
+        run: ./hadolint --failure-threshold warning Dockerfile

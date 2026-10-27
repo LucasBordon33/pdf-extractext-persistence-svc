@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-results="${1:?uso: report.sh <results.bin> [standard|conflict]}"
+results="${1:-}"
+if [ -z "$results" ]; then
+  echo "uso: report.sh results.bin [standard|conflict]" >&2
+  exit 1
+fi
 mode="${2:-standard}"
 
 report=$(vegeta report -type=json "$results")

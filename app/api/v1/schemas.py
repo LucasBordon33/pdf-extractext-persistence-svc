@@ -24,6 +24,12 @@ class DocumentResponse(BaseModel):
     created_at: datetime | None
 
 
+class UpdateDocumentRequest(BaseModel):
+    name: str | None = None
+    text: str | None = None
+    size: int | None = None
+
+
 class ErrorResponse(BaseModel):
     error_code: str
     message: str

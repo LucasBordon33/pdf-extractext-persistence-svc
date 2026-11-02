@@ -60,6 +60,7 @@ def test_documents_router_declares_exactly_the_requested_routes() -> None:
         ("/documents", frozenset({"GET"})),
         ("/documents/checksum/{checksum}", frozenset({"GET"})),
         ("/documents/{doc_id}", frozenset({"GET"})),
+        ("/documents/{doc_id}", frozenset({"PATCH"})),
         ("/documents/{doc_id}", frozenset({"DELETE"})),
     }
 
@@ -258,3 +259,49 @@ def test_delete_document_returns_404_when_document_not_found(
         "error_code": "DOCUMENT_NOT_FOUND",
         "message": "No document found for the given id",
     }
+
+
+def test_patch_document_returns_200_with_document_response_contract(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.update_by_id.return_value = FETCHED_DOCUMENT
+
+    response = client.patch(f"/documents/{DOC_ID}", json={"name": NAME, "size": SIZE})
+
+    assert response.status_code == 200
+    assert response.json() == FETCHED_DOCUMENT
+
+
+def test_patch_document_delegates_to_persistence_service(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.update_by_id.return_value = FETCHED_DOCUMENT
+
+    client.patch(f"/documents/{DOC_ID}", json={"text": TEXT, "size": SIZE})
+
+    persistence_service.update_by_id.assert_awaited_once_with(
+        DOC_ID, name=None, text=TEXT, size=SIZE
+    )
+
+
+def test_patch_document_returns_404_when_document_not_found(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    persistence_service.update_by_id.return_value = None
+
+    response = client.patch(f"/documents/{DOC_ID}", json={"name": NAME})
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error_code": "DOCUMENT_NOT_FOUND",
+        "message": "No document found for the given id",
+    }
+
+
+def test_patch_document_rejects_invalid_payload_with_422(
+    client: TestClient, persistence_service: AsyncMock
+) -> None:
+    response = client.patch(f"/documents/{DOC_ID}", json={"size": "not-a-number"})
+
+    assert response.status_code == 422
+    persistence_service.update_by_id.assert_not_awaited()

@@ -9,7 +9,7 @@ import pytest
 from app.domain.models import PDFDocument
 from app.domain.ports.repository import DocumentRepository
 
-CONTRACT_METHODS = ("save", "find_by_checksum", "find_by_id", "delete", "find_all")
+CONTRACT_METHODS = ("save", "find_by_checksum", "find_by_id", "update", "delete", "find_all")
 ALLOWED_STDLIB_IMPORTS = {"abc", "typing"}
 ALLOWED_DOMAIN_IMPORTS = {"app.domain.models"}
 
@@ -60,6 +60,7 @@ def test_contract_exposes_exactly_the_requested_operations() -> None:
         ("save", "doc", PDFDocument, str),
         ("find_by_checksum", "checksum", str, PDFDocument | None),
         ("find_by_id", "doc_id", str, PDFDocument | None),
+        ("update", "doc", PDFDocument, bool),
         ("delete", "doc_id", str, bool),
         ("find_all", None, None, list[PDFDocument]),
     ],

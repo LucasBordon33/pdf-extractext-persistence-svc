@@ -10,6 +10,7 @@ from app.api.v1.schemas import (
     HealthResponse,
     StoreRequest,
     StoreResponse,
+    UpdateDocumentRequest,
 )
 
 NAME = "report.pdf"
@@ -23,7 +24,14 @@ ERROR_MESSAGE = "No document found for the given checksum"
 STATUS = "ok"
 VERSION = "0.1.0"
 
-ALL_SCHEMAS = [StoreRequest, StoreResponse, DocumentResponse, ErrorResponse, HealthResponse]
+ALL_SCHEMAS = [
+    StoreRequest,
+    StoreResponse,
+    DocumentResponse,
+    UpdateDocumentRequest,
+    ErrorResponse,
+    HealthResponse,
+]
 
 
 def make_store_request() -> StoreRequest:
@@ -210,12 +218,44 @@ def test_health_response_missing_required_field_raises(missing_field: str) -> No
     )
 
 
+def make_update_request() -> UpdateDocumentRequest:
+    return UpdateDocumentRequest(name=NAME, text=TEXT, size=SIZE)
+
+
+def test_update_document_request_defaults_every_field_to_none() -> None:
+    request = UpdateDocumentRequest()
+
+    assert request.name is None
+    assert request.text is None
+    assert request.size is None
+
+
+def test_update_document_request_accepts_partial_payloads() -> None:
+    request = UpdateDocumentRequest(size=SIZE)
+
+    assert request.size == SIZE
+    assert request.name is None
+    assert request.text is None
+
+
+def test_update_document_request_model_dump_contains_exactly_declared_fields() -> None:
+    data = make_update_request().model_dump()
+
+    assert data == {"name": NAME, "text": TEXT, "size": SIZE}
+
+
+def test_update_document_request_incompatible_type_raises() -> None:
+    with pytest.raises(ValidationError):
+        UpdateDocumentRequest(size="not-a-number")
+
+
 @pytest.mark.parametrize(
     "schema_instance",
     [
         make_store_request(),
         make_store_response(),
         make_document_response(),
+        make_update_request(),
         make_error_response(),
         make_health_response(),
     ],
@@ -223,6 +263,7 @@ def test_health_response_missing_required_field_raises(missing_field: str) -> No
         "store_request",
         "store_response",
         "document_response",
+        "update_document_request",
         "error_response",
         "health_response",
     ],

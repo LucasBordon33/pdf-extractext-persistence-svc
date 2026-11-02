@@ -350,3 +350,80 @@ def test_document_cache_contract_has_no_invalidation_operation() -> None:
     }
 
     assert public_methods == {"get", "set", "acquire_lock", "release_lock"}
+
+
+async def test_update_by_id_updates_allowed_fields_and_refreshes_cache() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = make_existing_document()
+    repository.update.return_value = True
+    service = make_service(repository, cache)
+
+    result = await service.update_by_id(DOC_ID, text="Texto actualizado.", size=4096)
+
+    updated = repository.update.await_args.args[0]
+    assert updated.id == DOC_ID
+    assert updated.checksum == CHECKSUM
+    assert updated.content == "Texto actualizado."
+    assert updated.size == 4096
+    assert updated.name == NAME
+    assert result == {
+        "id": DOC_ID,
+        "name": NAME,
+        "checksum": CHECKSUM,
+        "content": "Texto actualizado.",
+        "size": 4096,
+        "created_at": "2026-10-09T12:30:00Z",
+    }
+    cache.set.assert_awaited_once_with(CHECKSUM, updated.to_json(), CACHE_TTL)
+
+
+async def test_update_by_id_applies_only_provided_fields() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = make_existing_document()
+    repository.update.return_value = True
+    service = make_service(repository, cache)
+
+    await service.update_by_id(DOC_ID, size=1)
+
+    updated = repository.update.await_args.args[0]
+    assert updated.size == 1
+    assert updated.name == NAME
+    assert updated.content == TEXT
+
+
+async def test_update_by_id_never_changes_identity_fields() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = make_existing_document()
+    repository.update.return_value = True
+    service = make_service(repository, cache)
+
+    await service.update_by_id(DOC_ID, name="otro.pdf", text="otro texto", size=1)
+
+    updated = repository.update.await_args.args[0]
+    assert updated.id == DOC_ID
+    assert updated.checksum == CHECKSUM
+    assert updated.created_at == datetime(2026, 10, 9, 12, 30, 0, tzinfo=UTC)
+
+
+async def test_update_by_id_returns_none_when_document_not_found() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = None
+    service = make_service(repository, cache)
+
+    result = await service.update_by_id(DOC_ID, name="otro.pdf")
+
+    assert result is None
+    repository.update.assert_not_awaited()
+    cache.set.assert_not_awaited()
+
+
+async def test_update_by_id_returns_none_when_repository_cannot_update() -> None:
+    repository, cache = make_ports()
+    repository.find_by_id.return_value = make_existing_document()
+    repository.update.return_value = False
+    service = make_service(repository, cache)
+
+    result = await service.update_by_id(DOC_ID, name="otro.pdf")
+
+    assert result is None
+    cache.set.assert_not_awaited()

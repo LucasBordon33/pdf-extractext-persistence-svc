@@ -76,5 +76,28 @@ class PersistenceService:
             return None
         return json.loads(document.to_json())
 
+    async def update_by_id(
+        self,
+        doc_id: str,
+        name: str | None = None,
+        text: str | None = None,
+        size: int | None = None,
+    ) -> dict[str, Any] | None:
+        document = await self._repository.find_by_id(doc_id)
+        if document is None:
+            return None
+
+        fields = {
+            field: value
+            for field, value in (("name", name), ("content", text), ("size", size))
+            if value is not None
+        }
+        updated = document.model_copy(update=fields)
+        if not await self._repository.update(updated):
+            return None
+
+        await self._cache.set(updated.checksum, updated.to_json(), self._cache_ttl_seconds)
+        return json.loads(updated.to_json())
+
     def _duplicate_response(self) -> dict[str, Any]:
         return {"status": 409, "detail": "Document with this checksum already exists"}

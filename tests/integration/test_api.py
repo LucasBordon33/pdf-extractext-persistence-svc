@@ -90,3 +90,37 @@ def test_health_reports_ok_with_live_mongo(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "0.1.0"}
+
+
+def test_update_document_updates_fields_and_serves_updated_read(client: TestClient) -> None:
+    stored = client.post("/api/v1/store", json=STORE_PAYLOAD).json()
+
+    response = client.patch(
+        f"/api/v1/documents/{stored['id']}",
+        json={"text": "Texto actualizado.", "size": 4096},
+    )
+
+    assert response.status_code == 200
+    document = response.json()
+    assert document["content"] == "Texto actualizado."
+    assert document["size"] == 4096
+    assert document["name"] == NAME
+    assert document["checksum"] == CHECKSUM
+
+    fetched = client.get(f"/api/v1/documents/{stored['id']}")
+    assert fetched.status_code == 200
+    assert fetched.json()["content"] == "Texto actualizado."
+
+
+def test_update_unknown_document_returns_404(client: TestClient) -> None:
+    response = client.patch("/api/v1/documents/68ff3f8a1b2c3d4e5f6a7b8c", json={"name": "otro.pdf"})
+
+    assert response.status_code == 404
+    assert response.json()["error_code"] == "DOCUMENT_NOT_FOUND"
+
+
+def test_delete_malformed_identifier_returns_404_not_500(client: TestClient) -> None:
+    response = client.delete("/api/v1/documents/not-an-objectid")
+
+    assert response.status_code == 404
+    assert response.json()["error_code"] == "DOCUMENT_NOT_FOUND"

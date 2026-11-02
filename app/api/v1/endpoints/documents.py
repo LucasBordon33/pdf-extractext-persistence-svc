@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse
 
 from app.api.deps import get_persistence_service
-from app.api.v1.schemas import DocumentResponse, ErrorResponse, StoreRequest, StoreResponse
+from app.api.v1.schemas import (
+    DocumentResponse,
+    ErrorResponse,
+    StoreRequest,
+    StoreResponse,
+    UpdateDocumentRequest,
+)
 from app.domain.services.persistence_service import PersistenceService
 
 NOT_FOUND_BY_ID_MESSAGE = "No document found for the given id"
@@ -44,6 +50,18 @@ async def get_document_by_checksum(
 @router.get("/documents/{doc_id}", response_model=DocumentResponse)
 async def get_document(doc_id: str, service: PersistenceServiceDep) -> DocumentResponse:
     document = await service.fetch_by_id(doc_id)
+    if document is None:
+        return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_ID_MESSAGE)
+    return DocumentResponse(**document)
+
+
+@router.patch("/documents/{doc_id}", response_model=DocumentResponse)
+async def update_document(
+    doc_id: str, payload: UpdateDocumentRequest, service: PersistenceServiceDep
+) -> DocumentResponse:
+    document = await service.update_by_id(
+        doc_id, name=payload.name, text=payload.text, size=payload.size
+    )
     if document is None:
         return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_ID_MESSAGE)
     return DocumentResponse(**document)

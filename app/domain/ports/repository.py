@@ -17,6 +17,10 @@ class DocumentRepository(ABC):
         ...
 
     @abstractmethod
+    async def update(self, doc: PDFDocument) -> bool:
+        ...
+
+    @abstractmethod
     async def delete(self, doc_id: str) -> bool:
         ...
 

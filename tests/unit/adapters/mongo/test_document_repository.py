@@ -243,3 +243,65 @@ def test_repository_module_contains_only_translation_dependencies() -> None:
                 assert node.module in ALLOWED_APP_IMPORTS
             else:
                 assert node.module.split(".")[0] in ALLOWED_ROOT_IMPORTS
+
+
+async def test_update_replaces_document_fields_and_returns_true(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    collection.replace_one.return_value.matched_count = 1
+    document = make_expected_document()
+
+    updated = await repository.update(document)
+
+    assert updated is True
+    collection.replace_one.assert_awaited_once()
+    query, payload = collection.replace_one.await_args.args
+    assert query == {"_id": ObjectId(DOC_ID)}
+    assert payload == {
+        "name": NAME,
+        "checksum": CHECKSUM,
+        "content": TEXT,
+        "size": SIZE,
+        "created_at": CREATED_AT,
+    }
+
+
+async def test_update_returns_false_when_document_is_missing(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    collection.replace_one.return_value.matched_count = 0
+
+    updated = await repository.update(make_expected_document())
+
+    assert updated is False
+
+
+async def test_update_returns_false_for_invalid_object_id(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    document = PDFDocument(
+        id="not-an-objectid", name=NAME, checksum=CHECKSUM, content=TEXT, size=SIZE
+    )
+
+    updated = await repository.update(document)
+
+    assert updated is False
+    collection.replace_one.assert_not_awaited()
+
+
+async def test_find_by_id_returns_none_for_invalid_object_id(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    result = await repository.find_by_id("not-an-objectid")
+
+    assert result is None
+    collection.find_one.assert_not_awaited()
+
+
+async def test_delete_returns_false_for_invalid_object_id(
+    repository: MongoDocumentRepository, collection: AsyncMock
+) -> None:
+    deleted = await repository.delete("not-an-objectid")
+
+    assert deleted is False
+    collection.delete_one.assert_not_awaited()

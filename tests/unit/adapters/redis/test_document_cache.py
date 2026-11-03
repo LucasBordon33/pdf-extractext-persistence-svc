@@ -54,7 +54,7 @@ def test_constructor_creates_redis_client_from_configured_url(
 ) -> None:
     RedisDocumentCache(redis_settings)
 
-    from_url.assert_called_once_with(REDIS_URL)
+    from_url.assert_called_once_with(REDIS_URL, decode_responses=True)
 
 
 def test_constructor_keeps_reference_to_internal_redis_client(
@@ -72,6 +72,17 @@ async def test_get_returns_stored_value_using_document_key(
 
     assert result == CACHED_VALUE
     redis_client.get.assert_awaited_once_with(DOCUMENT_KEY)
+
+
+async def test_get_decodes_bytes_values_returned_by_the_driver(
+    cache: RedisDocumentCache, redis_client: AsyncMock
+) -> None:
+    redis_client.get.return_value = CACHED_VALUE.encode("utf-8")
+
+    result = await cache.get(CHECKSUM)
+
+    assert result == CACHED_VALUE
+    assert isinstance(result, str)
 
 
 async def test_get_returns_none_when_key_does_not_exist(

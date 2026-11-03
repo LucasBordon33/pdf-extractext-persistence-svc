@@ -22,7 +22,9 @@ PersistenceServiceDep = Annotated[PersistenceService, Depends(get_persistence_se
 
 
 @router.post("/store", status_code=201, response_model=StoreResponse)
-async def store_document(payload: StoreRequest, service: PersistenceServiceDep) -> StoreResponse:
+async def store_document(
+    payload: StoreRequest, service: PersistenceServiceDep
+) -> StoreResponse | Response:
     result = await service.store(
         name=payload.name, text=payload.text, checksum=payload.checksum, size=payload.size
     )
@@ -40,7 +42,7 @@ async def list_documents(service: PersistenceServiceDep) -> list[DocumentRespons
 @router.get("/documents/checksum/{checksum}", response_model=DocumentResponse)
 async def get_document_by_checksum(
     checksum: str, service: PersistenceServiceDep
-) -> DocumentResponse:
+) -> DocumentResponse | Response:
     document = await service.fetch(checksum)
     if document is None:
         return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_CHECKSUM_MESSAGE)
@@ -48,7 +50,9 @@ async def get_document_by_checksum(
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentResponse)
-async def get_document(doc_id: str, service: PersistenceServiceDep) -> DocumentResponse:
+async def get_document(
+    doc_id: str, service: PersistenceServiceDep
+) -> DocumentResponse | Response:
     document = await service.fetch_by_id(doc_id)
     if document is None:
         return _error_response(404, "DOCUMENT_NOT_FOUND", NOT_FOUND_BY_ID_MESSAGE)
@@ -58,7 +62,7 @@ async def get_document(doc_id: str, service: PersistenceServiceDep) -> DocumentR
 @router.patch("/documents/{doc_id}", response_model=DocumentResponse)
 async def update_document(
     doc_id: str, payload: UpdateDocumentRequest, service: PersistenceServiceDep
-) -> DocumentResponse:
+) -> DocumentResponse | Response:
     document = await service.update_by_id(
         doc_id, name=payload.name, text=payload.text, size=payload.size
     )

@@ -6,7 +6,7 @@ from app.config import Settings
 class MongoClient:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._client = AsyncIOMotorClient(settings.mongo_uri)
+        self._client: AsyncIOMotorClient = AsyncIOMotorClient(settings.mongo_uri)
 
     @property
     def db(self) -> AsyncIOMotorDatabase:

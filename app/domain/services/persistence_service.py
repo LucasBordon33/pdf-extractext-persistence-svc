@@ -54,7 +54,7 @@ class PersistenceService:
 
     async def delete(self, checksum: str) -> bool:
         document = await self._repository.find_by_checksum(checksum)
-        if document is None:
+        if document is None or document.id is None:
             return False
 
         return await self._repository.delete(document.id)

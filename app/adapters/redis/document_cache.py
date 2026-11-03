@@ -6,10 +6,18 @@ from app.domain.ports.cache import DocumentCache
 
 class RedisDocumentCache(DocumentCache):
     def __init__(self, settings: Settings) -> None:
-        self._client = from_url(settings.redis_url)
+        self._client = from_url(settings.redis_url, decode_responses=True)
 
     async def get(self, checksum: str) -> str | None:
-        return await self._client.get(self._document_key(checksum))
+        value = await self._client.get(self._document_key(checksum))
+        return self._decode(value)
+
+    def _decode(self, value: bytes | str | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, bytes):
+            return value.decode("utf-8")
+        return value
 
     async def set(self, checksum: str, value: str, ttl: int) -> None:
         await self._client.set(self._document_key(checksum), value, ex=ttl)

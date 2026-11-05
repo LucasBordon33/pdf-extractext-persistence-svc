@@ -4,7 +4,8 @@ services:
       context: .
     image: pdf-persistence:0.1.0
     env_file:
-      - .env
+      - path: .env
+        required: false
     expose:
       - "8003"
     read_only: true
@@ -15,37 +16,51 @@ services:
     mem_limit: 256m
     restart: unless-stopped
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/api/v1/health')"
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/api/v1/health', timeout=4)\""]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       pdf-extractext-network:
         aliases:
           - store
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=pdf-extractext-network"
+      
+      # --- Configuración del Router ---
       - "traefik.http.routers.persistence.rule=Host(`persistence.localhost`)"
       - "traefik.http.routers.persistence.entrypoints=websecure"
       - "traefik.http.routers.persistence.tls=true"
       - "traefik.http.services.persistence.loadbalancer.server.port=8003"
 
+      - "traefik.http.routers.persistence.middlewares=persistence-retry@docker, persistence-cb@docker"
+
+      - "traefik.http.middlewares.persistence-retry.retry.attempts=3"
+      - "traefik.http.middlewares.persistence-retry.retry.initialinterval=100ms"
+
+      - "traefik.http.middlewares.persistence-cb.circuitbreaker.expression=NetworkErrorRatio() > 0.2 || ResponseCodeRatio(500, 600, 0, 600) > 0.2"
+      - "traefik.http.middlewares.persistence-cb.circuitbreaker.checkperiod=10s"
+      - "traefik.http.middlewares.persistence-cb.circuitbreaker.fallbackduration=15s"
+
   redis:
     image: redis:7-alpine
+    container_name: persistence-redis
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     restart: unless-stopped
     mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - pdf-extractext-network
 
 networks:
   pdf-extractext-network:
     external: true
-    name: pdf-extractext_pdf-extractext-network

@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 
 from app.adapters.mongo.client import MongoClient
 from app.api.deps import get_mongo_client
@@ -14,9 +15,13 @@ MongoClientDep = Annotated[MongoClient | None, Depends(get_mongo_client)]
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health(mongo_client: MongoClientDep) -> HealthResponse:
+async def health(mongo_client: MongoClientDep) -> JSONResponse:
     status = "ok" if mongo_client is None else await _mongo_health_status(mongo_client)
-    return HealthResponse(status=status, version=VERSION)
+    body = HealthResponse(status=status, version=VERSION).model_dump()
+    # 503 cuando la dependencia crítica no responde: Docker y Consul
+    # solo miran el código HTTP; con 200 los checks seguirían passing
+    # aunque MongoDB esté caído (instancia "sana" que no puede operar).
+    return JSONResponse(status_code=200 if status == "ok" else 503, content=body)
 
 
 async def _mongo_health_status(mongo_client: MongoClient) -> str:

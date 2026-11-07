@@ -7,6 +7,9 @@ from app.config import Settings
 
 MONGO_URI = "mongodb://mongo-test:27017"
 MONGO_DB = "pdf_documents_test"
+# Opciones de resiliencia pasadas al driver (client.py): fail-fast para
+# no colgar el event loop 30s ante un Mongo inalcanzable.
+MOTOR_OPTIONS = {"serverSelectionTimeoutMS": 2000, "connectTimeoutMS": 2000}
 
 
 @pytest.fixture
@@ -35,7 +38,7 @@ def test_constructor_creates_motor_client_with_configured_uri(
 ) -> None:
     MongoClient(mongo_settings)
 
-    motor_factory.assert_called_once_with(MONGO_URI)
+    motor_factory.assert_called_once_with(MONGO_URI, **MOTOR_OPTIONS)
 
 
 def test_adapter_keeps_reference_to_internal_motor_client(
@@ -93,4 +96,4 @@ async def test_adapter_lifecycle_uses_a_single_mocked_motor_client(
     assert await adapter.ping() is True
     await adapter.close()
 
-    motor_factory.assert_called_once_with(MONGO_URI)
+    motor_factory.assert_called_once_with(MONGO_URI, **MOTOR_OPTIONS)

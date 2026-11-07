@@ -10,12 +10,19 @@ from app.api.v1.router import api_v1_router
 from app.api.v1.schemas import ErrorResponse
 from app.config import Settings
 from app.domain.services.persistence_service import PersistenceService
+from app.infrastructure.consul import build_registry
+from app.infrastructure.service_discovery import (
+    ConsulServiceRegistry,
+)
+from app.infrastructure.service_discovery import (
+    configure_logging as configure_discovery_logging,
+)
 
 INTERNAL_ERROR_CODE = "INTERNAL_ERROR"
 INTERNAL_ERROR_MESSAGE = "Internal server error"
 
 
-def create_app(settings: Settings) -> FastAPI:
+def create_app(settings: Settings, registry: ConsulServiceRegistry | None = None) -> FastAPI:
     mongo_client = MongoClient(settings)
     repository = MongoDocumentRepository(mongo_client)
     cache = RedisDocumentCache(settings)
@@ -26,9 +33,17 @@ def create_app(settings: Settings) -> FastAPI:
         lock_ttl_seconds=settings.lock_ttl_seconds,
     )
 
+    consul_registry = registry or build_registry()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        # Registro en Consul una vez que la app está lista para servir.
+        consul_registry.register()
         yield
+        # Desregistro antes de cerrar dependencias: Consul deja de
+        # enviar tráfico primero (apagado gracioso, sin registros
+        # huérfanos; ante SIGKILL purga DeregisterCriticalServiceAfter).
+        consul_registry.deregister()
         await mongo_client.close()
         await cache.close()
 
@@ -47,6 +62,9 @@ async def _unhandled_exception_handler(_: Request, exc: Exception) -> JSONRespon
 
 
 settings = Settings()
+# Logging propio para los eventos de service discovery (INC-7): el root
+# logger de uvicorn no tiene handler y los INFO se perderían.
+configure_discovery_logging(settings.log_level)
 app = create_app(settings)
 
 if __name__ == "__main__":

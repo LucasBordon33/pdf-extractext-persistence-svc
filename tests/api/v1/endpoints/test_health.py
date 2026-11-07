@@ -65,7 +65,9 @@ def test_health_returns_degraded_when_mongo_ping_fails(
 
     response = client.get("/health")
 
-    assert response.status_code == 200
+    # 503: Docker y Consul solo miran el código HTTP; un 200 con
+    # "degraded" mantiene la instancia marcada como sana.
+    assert response.status_code == 503
     assert response.json() == EXPECTED_DEGRADED
     mongo_client.ping.assert_awaited_once()
 
@@ -78,7 +80,7 @@ def test_health_returns_degraded_when_mongo_ping_raises(
 
     response = client.get("/health")
 
-    assert response.status_code == 200
+    assert response.status_code == 503
     assert response.json() == EXPECTED_DEGRADED
     assert "ECONNREFUSED" not in response.text
 

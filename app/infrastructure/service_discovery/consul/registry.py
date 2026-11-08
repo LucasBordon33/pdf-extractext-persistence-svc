@@ -1,5 +1,3 @@
-"""Registro de servicios en Consul (implementación de `IServiceRegistry`)."""
-
 import socket
 import time
 from typing import Any
@@ -14,15 +12,6 @@ _PLATFORM_TAG = "pdf-extractext"
 
 
 class ConsulServiceRegistry:
-    """Registra/desregistra la instancia local vía el agente de Consul.
-
-    - `register` es idempotente: el Agent API hace upsert por `ID`.
-    - Best-effort: ante Consul caído devuelve `False` y el servicio sigue
-      levantado; la ruta crítica nunca depende del plano de discovery.
-    - Anti registros huérfanos: el health check lleva
-      `DeregisterCriticalServiceAfter`, así Consul purga solo las
-      instancias que murieron sin desregistrarse (SIGKILL, OOM).
-    """
 
     def __init__(
         self, client: ConsulAgentClient, settings: ServiceDiscoverySettings
@@ -32,13 +21,11 @@ class ConsulServiceRegistry:
 
     @property
     def service_id(self) -> str:
-        """ID único por contenedor: estable entre workers del mismo host."""
         if self._settings.service_id:
             return self._settings.service_id
         return f"{self._settings.service_name}-{socket.gethostname()}"
 
     def register(self) -> bool:
-        """Registra el servicio con su health check HTTP. Idempotente."""
         settings = self._settings
         if not settings.service_discovery_enabled:
             logger.info("Service discovery deshabilitado", extra={"event": "register_skipped"})
@@ -86,7 +73,6 @@ class ConsulServiceRegistry:
         return False
 
     def deregister(self) -> bool:
-        """Desregistra el servicio. Idempotente y best-effort."""
         settings = self._settings
         if not settings.service_discovery_enabled or not settings.service_name:
             return False

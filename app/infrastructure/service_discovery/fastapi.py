@@ -1,9 +1,3 @@
-"""Integración con FastAPI/ASGI: health check y ciclo de vida de registro.
-
-Puntos de integración de la capa de presentación con la infraestructura
-de discovery, sin filtrar Consul hacia `application`/`domain`.
-"""
-
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -17,11 +11,6 @@ logger = get_logger()
 
 
 def add_health_route(app: FastAPI, service_name: str, path: str = "/health") -> None:
-    """Publica `GET {path}` con el contrato de health de la plataforma.
-
-    Consul (y los HEALTHCHECK de Docker) sondean este endpoint para
-    validar la disponibilidad de la instancia.
-    """
 
     @app.get(path, include_in_schema=False)
     def health() -> dict[str, str]:
@@ -29,15 +18,6 @@ def add_health_route(app: FastAPI, service_name: str, path: str = "/health") -> 
 
 
 def attach_consul_lifespan(app: FastAPI, registry: IServiceRegistry) -> None:
-    """Envuelve el lifespan existente de la app.
-
-    - Al iniciar (tras el startup de la app): `registry.register()`.
-    - Al apagar (shutdown del lifespan): `registry.deregister()`.
-
-    Uvicorn traduce SIGINT/SIGTERM a un apagado gracioso que ejecuta el
-    shutdown del lifespan, garantizando el desregistro. Ante SIGKILL u
-    OOM, Consul purga el registro vía `DeregisterCriticalServiceAfter`.
-    """
     previous_lifespan = app.router.lifespan_context
 
     @asynccontextmanager

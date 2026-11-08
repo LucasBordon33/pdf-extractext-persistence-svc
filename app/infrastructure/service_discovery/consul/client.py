@@ -1,8 +1,7 @@
 import json
-import urllib.error
-import urllib.parse
-import urllib.request
 from typing import Any
+
+import requests
 
 from ..models import ServiceInstance
 from ..settings import ServiceDiscoverySettings
@@ -11,16 +10,8 @@ from ..settings import ServiceDiscoverySettings
 class ConsulError(RuntimeError):
     """Fallo de comunicación con el agente de Consul."""
 
-
 class ConsulAgentClient:
     def __init__(self, settings: ServiceDiscoverySettings) -> None:
-        parsed = urllib.parse.urlparse(settings.consul_base_url)
-
-        if parsed.scheme not in {"http", "https"}:
-            raise ValueError(
-                "Consul base URL must use HTTP or HTTPS"
-            )
-
         self._base_url = settings.consul_base_url.rstrip("/")
         self._timeout = settings.consul_timeout
 
@@ -28,19 +19,16 @@ class ConsulAgentClient:
         self._request("PUT", "/v1/agent/service/register", payload)
 
     def deregister(self, service_id: str) -> None:
-        path = (
-            f"/v1/agent/service/deregister/"
-            f"{urllib.parse.quote(service_id, safe='')}"
+        self._request(
+            "PUT",
+            f"/v1/agent/service/deregister/{requests.utils.quote(service_id, safe='')}",
         )
-        self._request("PUT", path)
 
     def healthy_instances(self, service_name: str) -> tuple[ServiceInstance, ...]:
-        path = (
-            f"/v1/health/service/"
-            f"{urllib.parse.quote(service_name, safe='')}?passing=true"
-        )
-
-        entries = self._request("GET", path) or []
+        entries = self._request(
+            "GET",
+            f"/v1/health/service/{requests.utils.quote(service_name, safe='')}?passing=true",
+        ) or []
 
         return tuple(
             ServiceInstance(
@@ -59,43 +47,32 @@ class ConsulAgentClient:
         path: str,
         payload: dict[str, Any] | None = None,
     ) -> Any:
-        body = None
-        headers: dict[str, str] = {}
-
-        if payload is not None:
-            body = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-
-        request = urllib.request.Request(
-            f"{self._base_url}{path}",
-            data=body,
-            headers=headers,
-            method=method,
-        )
-
         try:
-            # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected
-            with urllib.request.urlopen(
-                request,
+            response = requests.request(
+                method=method,
+                url=f"{self._base_url}{path}",
+                json=payload,
                 timeout=self._timeout,
-            ) as response:
-                raw = response.read()
+            )
 
-        except urllib.error.HTTPError as exc:
+            response.raise_for_status()
+
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response else "unknown"
             raise ConsulError(
-                f"Consul respondió {exc.code} para {method} {path}"
+                f"Consul respondió {status} para {method} {path}"
             ) from exc
 
-        except OSError as exc:
+        except requests.RequestException as exc:
             raise ConsulError(
                 f"Consul inalcanzable en {self._base_url}: {exc}"
             ) from exc
 
-        if not raw:
+        if not response.content:
             return None
 
         try:
-            return json.loads(raw)
+            return response.json()
 
         except json.JSONDecodeError as exc:
             raise ConsulError(

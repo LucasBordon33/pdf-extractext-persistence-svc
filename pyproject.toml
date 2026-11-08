@@ -19,6 +19,7 @@ dependencies = [
     "pydantic-settings",
     "motor",
     "redis>=5",
+    "requests",
 ]
 
 [project.optional-dependencies]

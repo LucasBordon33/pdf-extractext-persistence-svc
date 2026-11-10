@@ -2,12 +2,10 @@ services:
   persistence-service:
     build:
       context: .
-    image: pdf-persistence:0.1.0
+    image: pdf-persistence:1.0.0
     env_file:
       - path: .env
         required: false
-    expose:
-      - "8003"
     read_only: true
     tmpfs:
       - /tmp:size=10m

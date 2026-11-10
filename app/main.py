@@ -22,7 +22,9 @@ INTERNAL_ERROR_CODE = "INTERNAL_ERROR"
 INTERNAL_ERROR_MESSAGE = "Internal server error"
 
 
-def create_app(settings: Settings, registry: ConsulServiceRegistry | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, registry: ConsulServiceRegistry | None = None) -> FastAPI:
+    if settings is None:
+        settings = Settings()
     mongo_client = MongoClient(settings)
     repository = MongoDocumentRepository(mongo_client)
     cache = RedisDocumentCache(settings)

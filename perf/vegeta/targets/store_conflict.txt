@@ -1,0 +1,1 @@
+POST __BASE_URL__/api/v1/store HTTP/1.1

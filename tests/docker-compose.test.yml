@@ -1,0 +1,35 @@
+services:
+  k6:
+    image: grafana/k6:0.54.0
+    container_name: pdf-stress-k6
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      BASE_URL: ${BASE_URL:-https://traefik}
+    volumes:
+      - ../perf:/perf:ro
+    working_dir: /perf/k6
+    command: ["run", "/perf/k6/scenarios/read_steady.js"]
+    networks:
+      - pdf-extractext-network
+
+  vegeta:
+    image: peterevans/vegeta:latest
+    container_name: pdf-stress-vegeta
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      BASE_URL: ${BASE_URL:-https://traefik}
+    volumes:
+      - ../perf:/perf:rw
+    working_dir: /perf/vegeta
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["apk add --no-cache bash jq && bash attack.sh health"]
+    networks:
+      - pdf-extractext-network
+
+networks:
+  pdf-extractext-network:
+    external: true

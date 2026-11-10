@@ -67,7 +67,10 @@ Escenarios Vegeta (`perf/vegeta/targets/`): `health.json` (probe barato a 200 rp
 ```bash
 # Local contra docker-compose (red pdf-extractext, host persistence.localhost)
 docker compose up -d
-export BASE_URL="https://persistence.localhost"   # o http://127.0.0.1:8003 según exposición
+export BASE_URL="https://localhost:443"   # Traefik expone websecure (443) con TLS
+
+# Forzar omitir verificación TLS (certificado autofirmado):
+export K6_INSECURE_SKIP_TLS_VERIFY=true
 
 # K6
 k6 run perf/k6/scenarios/read_steady.js
@@ -75,7 +78,7 @@ K6_TEXT_BYTES=8192 k6 run perf/k6/scenarios/store_sustained.js
 k6 run perf/k6/scenarios/stress_ramp.js
 k6 run perf/k6/scenarios/spike.js
 
-# Vegeta (requiere vegeta y jq)
+# Vegeta (requiere vegeta y jq). Se agrega -insecure al ataque por TLS autofirmado.
 bash perf/vegeta/attack.sh health       RATE=200 DURATION=120s
 bash perf/vegeta/attack.sh fetch_hit    RATE=100 DURATION=60s
 bash perf/vegeta/attack.sh store_conflict RATE=50 DURATION=300s

@@ -16,6 +16,7 @@ export const options = {
             maxVUs: 150,
         },
     },
+    tls: { insecureSkipTLSVerify: true },
     thresholds: serviceThresholds({
         durationP95: 500,
         failedRate: 0.05,

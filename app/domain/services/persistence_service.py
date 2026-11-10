@@ -50,30 +50,32 @@ class PersistenceService:
 
         json_document = document.to_json()
         await self._cache.set(checksum, json_document, self._cache_ttl_seconds)
-        return json.loads(json_document)
+        return self._document_to_dict(document)
 
     async def delete(self, checksum: str) -> bool:
-        document = await self._repository.find_by_checksum(checksum)
+        return await self._delete_by_lookup(lambda: self._repository.find_by_checksum(checksum))
+
+    async def delete_by_id(self, doc_id: str) -> bool:
+        return await self._delete_by_lookup(lambda: self._repository.find_by_id(doc_id))
+
+    async def _delete_by_lookup(self, lookup) -> bool:
+        document = await lookup()
         if document is None or document.id is None:
             return False
 
         return await self._repository.delete(document.id)
 
-    async def delete_by_id(self, doc_id: str) -> bool:
-        document = await self._repository.find_by_id(doc_id)
-        if document is None:
-            return False
-
-        return await self._repository.delete(doc_id)
-
     async def list_all(self) -> list[dict[str, Any]]:
         documents = await self._repository.find_all()
-        return [json.loads(document.to_json()) for document in documents]
+        return [self._document_to_dict(document) for document in documents]
 
     async def fetch_by_id(self, doc_id: str) -> dict[str, Any] | None:
         document = await self._repository.find_by_id(doc_id)
         if document is None:
             return None
+        return self._document_to_dict(document)
+
+    def _document_to_dict(self, document: PDFDocument) -> dict[str, Any]:
         return json.loads(document.to_json())
 
     async def update_by_id(
@@ -97,7 +99,7 @@ class PersistenceService:
             return None
 
         await self._cache.set(updated.checksum, updated.to_json(), self._cache_ttl_seconds)
-        return json.loads(updated.to_json())
+        return self._document_to_dict(updated)
 
     def _duplicate_response(self) -> dict[str, Any]:
-        return {"status": 409, "detail": "Document with this checksum already exists"}
+        return {"is_duplicate": True, "detail": "Document with this checksum already exists"}

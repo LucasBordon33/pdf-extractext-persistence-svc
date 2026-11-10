@@ -28,7 +28,7 @@ async def store_document(
     result = await service.store(
         name=payload.name, text=payload.text, checksum=payload.checksum, size=payload.size
     )
-    if result.get("status") == 409:
+    if result.get("is_duplicate"):
         return _error_response(409, "DUPLICATE_DOCUMENT", result["detail"])
     return StoreResponse(id=result["id"], checksum=result["checksum"])
 

@@ -1,4 +1,7 @@
-export const BASE_URL = __ENV.BASE_URL || "http://127.0.0.1:8003";
+export const BASE_URL = __ENV.BASE_URL || "https://localhost:443";
+// Traefik expone el servicio por HTTPS (websecure, puerto 443) con certificado
+// posiblemente autofirmado. Forzar omitir verificación TLS con:
+//   K6_INSECURE_SKIP_TLS_VERIFY=true k6 run <scenario>.js
 export const API_V1 = `${BASE_URL}/api/v1`;
 
 export function serviceThresholds({ durationP95, failedRate, tags = {}, checksRate }) {
